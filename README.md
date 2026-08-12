@@ -39,7 +39,7 @@ git clone https://github.com/beifangzhishi-ops/oc-model-call.git ~/.codex/skills
 | oc（GO/Zen） | `experimental_bearer_token`，或环境变量 `OPENCODE_API_KEY` | `~/.codex/config_opencode.toml` |
 | 直连 Gemini（Google 官方 API） | `experimental_bearer_token` | `~/.codex/config_google.toml` |
 
-本机约定：境外访问走代理 `http://127.0.0.1:7890`。本仓库不包含、也不会接受任何真实密钥。
+境外访问如需代理，按本机网络配置添加 `-x` 参数。本仓库不包含、也不会接受任何真实密钥。
 
 ## 免责声明
 
