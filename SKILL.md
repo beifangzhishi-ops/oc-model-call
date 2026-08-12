@@ -230,7 +230,7 @@ description: 调用 OpenCode（oc）模型（GO 订阅与 Zen 按量）与直连
 ## 直连 Gemini（Google 官方 API，区别于 oc 中转的 Zen Gemini）
 
 - 定位：Gemini 只负责音频多模态与对话生成，不参与 Codex agent 主力（主力仍为 oc deepseek-v4-flash）。
-- 凭据：从 `~/.codex/config_google.toml` 提取 `experimental_bearer_token`（gamecodex），禁止硬编码、禁止打印。
+- 凭据：从 `~/.codex/config_google.toml` 提取 `experimental_bearer_token`，禁止硬编码、禁止打印。
 - 端点：`https://generativelanguage.googleapis.com/v1beta/openai/`（OpenAI 兼容），只支持 chat/completions；原生 `/v1beta/models/{id}:generateContent` 端点对该 key 返回 401 `API_KEY_SERVICE_BLOCKED`，不要使用。
 - 认证：`Authorization: Bearer <KEY>` 即可。
 - 模型：`gemini-3.6-flash`（免费层，输入输出免费，有每日/每分钟限额）。
@@ -251,7 +251,7 @@ description: 调用 OpenCode（oc）模型（GO 订阅与 Zen 按量）与直连
 curl.exe -sS --max-time 120 -x http://127.0.0.1:7890 -X POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" --data-binary "@request.json"
 ```
 
-### 音频调用（2026-08-12 实测：3MB mp3 正确识别歌曲风格/语言/主题）
+### 音频调用（2026-08-12 实测：3MB mp3 正确识别歌曲风格/语言/主题；567KB 34s mp3 正确识别歌名；WAV 不识别）
 
 ```json
 {
@@ -473,8 +473,9 @@ Gemini 音频用 `{"inline_data": {"mime_type": "audio/wav", "data": "<BASE64>"}
 - Cloudflare 403 error 1010：Python urllib 默认 User-Agent 会被拦截。解决：使用 curl.exe（直连即可），或 Python 请求设置 `User-Agent: curl/8.4.0`（实测有效）。不要先怀疑代理。
 - curl.exe 从 Python subprocess 启动报 `SEC_E_NO_CREDENTIALS (0x8009030e)`（schannel 凭据错误）：解决：改回 Python urllib 并伪装 curl UA。
 - Gemini 401 `Missing API key`：只带 Bearer 不够，必须额外带 `x-goog-api-key: <TOKEN>` 头。
-- 直连 Gemini 原生 generateContent 端点 401 `API_KEY_SERVICE_BLOCKED`：gamecodex key 仅支持 OpenAI 兼容端点（`/v1beta/openai/chat/completions` + Bearer），统一走 OpenAI 兼容格式。
+- 直连 Gemini 原生 generateContent 端点 401 `API_KEY_SERVICE_BLOCKED`：本机 Google 凭据仅支持 OpenAI 兼容端点（`/v1beta/openai/chat/completions` + Bearer），统一走 OpenAI 兼容格式。
 - 直连 Gemini 不带代理时连接失败：大陆访问必须加 `-x http://127.0.0.1:7890`。
+- 直连 Gemini OpenAI 兼容端点音频：16-bit PCM WAV（440/880 Hz 双音）返回 200 但模型回复“消息未传清楚”，音频未被识别；同一端点 mp3 正常（实测 567KB 34s 歌曲正确识别歌名）。音频任务统一使用 mp3，避免 WAV。
 - `qwen3.7-max`（GO）：messages 端点返回 400 且错误体只有 `{"model":"qwen3.7-max"}`，chat/completions 同样 400；`qwen3.7-max` / `qwen3.7-plus`（Zen）：401 `Model qwen3.7-max is not supported`。结论：网关当前未提供可用端点，勿误用；调用前先向用户说明。
 - `grok-4.5`（GO）：多次重试均 503 `Endpoint is unavailable`；`grok-4.5`（Zen）：文本可用，图片 400、音频 400。需按此记录，恢复后更新。
 - GLM 系列：GO 端 200 但图片/音频被剥离（模型称无多模态能力），Zen 端直接 400 `does not support image inputs`。两套件均按不支持处理。
