@@ -507,10 +507,6 @@ Gemini 音频用 `{"inline_data": {"mime_type": "audio/wav", "data": "<BASE64>"}
 - 直连 Gemini 原生 generateContent 端点 401 `API_KEY_SERVICE_BLOCKED`：该凭据仅支持 OpenAI 兼容端点（`/v1beta/openai/chat/completions` + Bearer），统一走 OpenAI 兼容格式。
 - 直连 Gemini 不带代理时连接失败：大陆访问必须走本机代理（代理地址见本机配置，不写入公开文档）。
 - 直连 Gemini OpenAI 兼容端点音频：16-bit PCM WAV（440/880 Hz 双音）返回 200 但模型回复“消息未传清楚”，音频未被识别；同一端点 mp3 正常（实测 567KB 34s 歌曲正确识别歌名）。音频任务统一使用 mp3，避免 WAV。
-- `qwen3.7-max`（GO）：messages 端点返回 400 且错误体只有 `{"model":"qwen3.7-max"}`，chat/completions 同样 400；`qwen3.7-max` / `qwen3.7-plus`（Zen）：401 `Model qwen3.7-max is not supported`。结论：网关当前未提供可用端点，勿误用；调用前先向用户说明。
-- `grok-4.5`（GO）：多次重试均 503 `Endpoint is unavailable`；`grok-4.5`（Zen）：文本可用，图片 400、音频 400。需按此记录，恢复后更新。
-- GLM 系列：GO 端 200 但图片/音频被剥离（模型称无多模态能力），Zen 端直接 400 `does not support image inputs`。两套件均按不支持处理。
-- 免费模型 hy3-free：200 但附件被剥离成占位符（模型称“未收到图片/音频”），判定不支持。
 - 遇到任何新的调用失败或解决方法，按“调用失败必须回写本 skill”一节补充到本节。
 
 ## 注意事项
