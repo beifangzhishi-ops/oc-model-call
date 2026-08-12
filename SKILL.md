@@ -1,6 +1,6 @@
 ---
 name: oc-model-call
-description: 调用 OpenCode（oc）模型（GO 订阅与 Zen 按量）的统一指导，覆盖 deepseek-v4-flash/pro 等文本模型和 mimo-v2.5、minimax-m3、qwen3.7-plus 等多模态模型：端点、认证、请求格式、凭据、代理与降级。当任务需要调用 oc 模型、主力模型不支持图像、或需要把图片/截图/图表交给多模态模型分析时使用。
+description: 调用 OpenCode（oc）模型（GO 订阅与 Zen 按量）与直连 Google Gemini（官方 API，区别于 oc 中转的 Zen Gemini）的统一指导，覆盖 deepseek-v4-flash/pro 等文本模型和 mimo-v2.5、minimax-m3、qwen3.7-plus、gemini-3.6-flash 等多模态模型：端点、认证、请求格式、凭据、代理与降级。当任务需要调用 oc 模型、直连 Gemini、主力模型不支持图像或音频、或需要把图片/截图/图表交给多模态模型分析时使用。
 ---
 
 # OpenCode（oc）模型调用
@@ -132,7 +132,7 @@ description: 调用 OpenCode（oc）模型（GO 订阅与 Zen 按量）的统一
 
 ### 通用约定
 
-- 凭据：从 `~/.codex/config_opencode.toml` 提取 `experimental_bearer_token`，也可使用环境变量 `OPENCODE_API_KEY`；禁止硬编码、禁止打印。
+- 凭据：oc 从 `~/.codex/config_opencode.toml` 提取 `experimental_bearer_token`（也可用环境变量 `OPENCODE_API_KEY`）；直连 Gemini 从 `~/.codex/config_google.toml` 提取 `experimental_bearer_token`。禁止硬编码、禁止打印。
 - 工具：使用 curl.exe（PowerShell 的 curl 别名不可用）；Python 脚本请参考“故障处理”中的 UA 设置。
 - 基础端点：GO 订阅 `https://opencode.ai/zen/go/v1`，Zen 按量 `https://opencode.ai/zen/v1`。
 - 请求体写入临时 JSON 文件再用 `--data-binary "@file"` 发送，避免命令行转义问题。
@@ -227,6 +227,66 @@ description: 调用 OpenCode（oc）模型（GO 订阅与 Zen 按量）的统一
 | Nemotron 3.5 Lightning Free | nemotron-3.5-lightning-free | https://opencode.ai/zen/v1/chat/completions | @ai-sdk/openai-compatible |
 | DeepSeek V4 Flash Free | deepseek-v4-flash-free | https://opencode.ai/zen/v1/chat/completions | @ai-sdk/openai-compatible |
 
+## 直连 Gemini（Google 官方 API，区别于 oc 中转的 Zen Gemini）
+
+- 定位：Gemini 只负责音频多模态与对话生成，不参与 Codex agent 主力（主力仍为 oc deepseek-v4-flash）。
+- 凭据：从 `~/.codex/config_google.toml` 提取 `experimental_bearer_token`（gamecodex），禁止硬编码、禁止打印。
+- 端点：`https://generativelanguage.googleapis.com/v1beta/openai/`（OpenAI 兼容），只支持 chat/completions；原生 `/v1beta/models/{id}:generateContent` 端点对该 key 返回 401 `API_KEY_SERVICE_BLOCKED`，不要使用。
+- 认证：`Authorization: Bearer <KEY>` 即可。
+- 模型：`gemini-3.6-flash`（免费层，输入输出免费，有每日/每分钟限额）。
+- 网络：大陆访问需走代理 `-x http://127.0.0.1:7890`。
+- 费用与授权：免费层输出单价 0 美元，不属于顶模，无需授权；额度有限，调用前仍说明用途。
+
+### 文本调用（2026-08-12 实测）
+
+```json
+{
+  "model": "gemini-3.6-flash",
+  "messages": [{"role": "user", "content": "你的问题"}],
+  "max_tokens": 2048
+}
+```
+
+```powershell
+curl.exe -sS --max-time 120 -x http://127.0.0.1:7890 -X POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" --data-binary "@request.json"
+```
+
+### 音频调用（2026-08-12 实测：3MB mp3 正确识别歌曲风格/语言/主题）
+
+```json
+{
+  "model": "gemini-3.6-flash",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "这段音频唱的是什么？请描述歌曲风格、语言和内容主题。"},
+        {"type": "input_audio", "input_audio": {"data": "<BASE64>", "format": "mp3"}}
+      ]
+    }
+  ],
+  "max_tokens": 600
+}
+```
+
+### 图片调用（OpenAI 兼容格式，与 oc OpenAI 兼容格式一致；直连图片尚未实测）
+
+```json
+{
+  "model": "gemini-3.6-flash",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "这张图曲线是否正常？"},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,<BASE64>"}}
+      ]
+    }
+  ],
+  "max_tokens": 1024
+}
+```
+
 ## 多模态能力（2026-08-12 最小实测）
 
 测试方法：64×64 PNG（红色圆形带数字 1）+ 0.6 秒 440 Hz WAV，每模型每模态一个最小请求。HTTP 200 且模型能描述图中内容/音频音色 = 支持；400 报错或模型声称看不到附件 = 不支持；503/401 等 = 网关暂不可用或未提供该模型。
@@ -276,6 +336,7 @@ Zen：
 | 模型 | 声音 | 备注 |
 |---|---|---|
 | gemini-3.5-flash / gemini-3.5-flash-lite / gemini-3.6-flash（Zen） | 支持 | 识别为纯音/提示音，频率判断有偏差 |
+| gemini-3.6-flash（直连） | 支持 | 3MB mp3 正确识别歌曲风格/语言/主题（2026-08-12 实测） |
 | gemini-3-flash / gemini-3.1-pro（Zen） | 不支持 | 200 但只收到音频占位符文本 |
 | 其余全部已测模型（GO 与 Zen） | 不支持 | 见下方备注 |
 
@@ -412,6 +473,8 @@ Gemini 音频用 `{"inline_data": {"mime_type": "audio/wav", "data": "<BASE64>"}
 - Cloudflare 403 error 1010：Python urllib 默认 User-Agent 会被拦截。解决：使用 curl.exe（直连即可），或 Python 请求设置 `User-Agent: curl/8.4.0`（实测有效）。不要先怀疑代理。
 - curl.exe 从 Python subprocess 启动报 `SEC_E_NO_CREDENTIALS (0x8009030e)`（schannel 凭据错误）：解决：改回 Python urllib 并伪装 curl UA。
 - Gemini 401 `Missing API key`：只带 Bearer 不够，必须额外带 `x-goog-api-key: <TOKEN>` 头。
+- 直连 Gemini 原生 generateContent 端点 401 `API_KEY_SERVICE_BLOCKED`：gamecodex key 仅支持 OpenAI 兼容端点（`/v1beta/openai/chat/completions` + Bearer），统一走 OpenAI 兼容格式。
+- 直连 Gemini 不带代理时连接失败：大陆访问必须加 `-x http://127.0.0.1:7890`。
 - `qwen3.7-max`（GO）：messages 端点返回 400 且错误体只有 `{"model":"qwen3.7-max"}`，chat/completions 同样 400；`qwen3.7-max` / `qwen3.7-plus`（Zen）：401 `Model qwen3.7-max is not supported`。结论：网关当前未提供可用端点，勿误用；调用前先向用户说明。
 - `grok-4.5`（GO）：多次重试均 503 `Endpoint is unavailable`；`grok-4.5`（Zen）：文本可用，图片 400、音频 400。需按此记录，恢复后更新。
 - GLM 系列：GO 端 200 但图片/音频被剥离（模型称无多模态能力），Zen 端直接 400 `does not support image inputs`。两套件均按不支持处理。
@@ -425,3 +488,4 @@ Gemini 音频用 `{"inline_data": {"mime_type": "audio/wav", "data": "<BASE64>"}
 - 顶模调用必须按“费用与授权”一节取得用户授权；授权后仍应在请求前复核模型名与套件，避免误用高价模型。
 - 音频实测中仅 Zen Gemini 3.5-flash / 3.5-flash-lite / 3.6-flash 可用；其余模型按文本处理，不要把音频任务派给它们。
 - kimi-k3 在 oc 网关可看图（2026-08-12 实测），但不可听音频；审图任务可用 k3，审音频任务请改用 Zen Gemini。
+- 直连 Gemini（Google 官方）与 Zen Gemini（oc 中转）是两套独立通道：直连走 OpenAI 兼容端点 + `config_google.toml` 凭据 + 免费层（无需授权）；Zen 走 opencode.ai + Google 格式 + `x-goog-api-key`，按量计费且属顶模需授权。
