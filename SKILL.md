@@ -230,7 +230,7 @@ description: 调用 OpenCode（oc）模型（GO 订阅与 Zen 按量）与直连
 ## 直连 DeepSeek（官方 API，区别于 oc 中转的 GO/Zen DeepSeek）
 
 - 定位：DeepSeek 官方直连，与 oc 中转互相独立；凭据从 `~/.codex/config_deepseek.toml` 提取 `experimental_bearer_token`，禁止硬编码、禁止打印。
-- 端点：`https://api.deepseek.com/responses` 与 `https://api.deepseek.com/v1/responses` 均原生支持 OpenAI Responses API；官方文档已明确列出 `deepseek-v4-pro` 支持（2026-08-13 核对「模型 & 价格」与「使用 Responses API」指南，见 https://api-docs.deepseek.com/zh-cn/guides/responses_api/，model 可选 deepseek-v4-flash / deepseek-v4-pro，`previous_response_id` 不支持），且明确说明该 API“为了满足大家对 Codex 的需求”新增、配置后可直接在 Codex 中使用 DeepSeek 模型，custom 工具仅支持 `apply_patch`（用于 Codex 兼容）；同日本机实测 `deepseek-v4-pro` 成功（HTTP 200，返回 reasoning + message）。
+- 端点：`https://api.deepseek.com/responses` 与 `https://api.deepseek.com/v1/responses` 均原生支持 OpenAI Responses API；官方文档已明确列出 `deepseek-v4-pro` 支持（2026-08-13 核对「模型 & 价格」与「使用 Responses API」指南，见 https://api-docs.deepseek.com/zh-cn/guides/responses_api/，model 可选 deepseek-v4-flash / deepseek-v4-pro，`previous_response_id` 不支持），且明确说明该 API“为了满足大家对 Codex 的需求”新增、配置后可直接在 Codex 中使用 DeepSeek 模型（接入 Codex 页的 models.json 同时声明 flash 与 pro），custom 工具仅支持 `apply_patch`（用于 Codex 兼容）；同日本机实测 `deepseek-v4-pro` 成功（HTTP 200，返回 reasoning + message）。注意：官方「更新日志」页仍是 Flash 发布时的旧条目（写 Pro 未改、将尽快发布），核对支持情况以「模型 & 价格」「Responses API 指南」「接入 Codex」为准。
 - 多轮 agent 循环（2026-08-13 实测 deepseek-v4-pro）：首轮返回 reasoning + function_call；回传时必须把 `function_call` 作为 input 顶层项（不是嵌在 assistant content 里），紧随 `function_call_output`，第二轮返回最终 message。官方文档明确：input 顶层 `function_call` 会归并到相邻 assistant 消息；`previous_response_id` 不支持（stateless）。
 - 请求格式：Responses API（model + input + max_output_tokens），示例：
 
