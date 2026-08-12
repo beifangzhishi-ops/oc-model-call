@@ -5,6 +5,7 @@ OpenCode（oc）模型调用指导 skill：统一指导调用 OpenCode 的 GO �
 ## 功能
 
 - 文本调用：deepseek-v4-flash / pro 等
+- 直连 DeepSeek：官方 Responses API（deepseek-v4-flash / deepseek-v4-pro），独立于 oc 中转
 - 多模态调用：mimo-v2.5、minimax-m3、qwen3.7-plus、Claude、Gemini、GPT-5.x 等；音频支持直连 Gemini（mp3）与 Zen Gemini 部分模型
 - 直连 Gemini：Google 官方 OpenAI 兼容端点（免费层），与 oc 中转的 Zen Gemini 区分
 - 费用与授权：顶模调用前先向用户确认模型名、套件、用途与费用

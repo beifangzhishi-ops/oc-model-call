@@ -227,6 +227,37 @@ description: 调用 OpenCode（oc）模型（GO 订阅与 Zen 按量）与直连
 | Nemotron 3.5 Lightning Free | nemotron-3.5-lightning-free | https://opencode.ai/zen/v1/chat/completions | @ai-sdk/openai-compatible |
 | DeepSeek V4 Flash Free | deepseek-v4-flash-free | https://opencode.ai/zen/v1/chat/completions | @ai-sdk/openai-compatible |
 
+## 直连 DeepSeek（官方 API，区别于 oc 中转的 GO/Zen DeepSeek）
+
+- 定位：DeepSeek 官方直连，与 oc 中转互相独立；凭据从 `~/.codex/config_deepseek.toml` 提取 `experimental_bearer_token`，禁止硬编码、禁止打印。
+- 端点：`https://api.deepseek.com/responses` 与 `https://api.deepseek.com/v1/responses` 均原生支持 OpenAI Responses API；官方文档已明确列出 `deepseek-v4-pro` 支持（2026-08-13 核对「模型 & 价格」与「使用 Responses API」指南，见 https://api-docs.deepseek.com/zh-cn/guides/responses_api/，model 可选 deepseek-v4-flash / deepseek-v4-pro，`previous_response_id` 不支持）；同日本机实测 `deepseek-v4-pro` 成功（HTTP 200，返回 reasoning + message）。
+- 多轮 agent 循环（2026-08-13 实测 deepseek-v4-pro）：首轮返回 reasoning + function_call；回传时必须把 `function_call` 作为 input 顶层项（不是嵌在 assistant content 里），紧随 `function_call_output`，第二轮返回最终 message。官方文档明确：input 顶层 `function_call` 会归并到相邻 assistant 消息；`previous_response_id` 不支持（stateless）。
+- 请求格式：Responses API（model + input + max_output_tokens），示例：
+
+```json
+{
+  "model": "deepseek-v4-pro",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {"type": "input_text", "text": "你的问题"}
+      ]
+    }
+  ],
+  "max_output_tokens": 2048
+}
+```
+
+发送：
+
+```powershell
+curl.exe -sS --max-time 120 -X POST https://api.deepseek.com/v1/responses -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" --data-binary "@request.json"
+```
+
+- 注意：请求 JSON 文件必须为无 BOM 的 UTF-8，否则 curl 发送后返回 400 `Failed to parse the request body as JSON`。
+- GO `deepseek-v4-pro` 的 `/responses` 是 chat 映射而非原生透传（2026-08-13 实测）：返回精简 response 壳（无 reasoning、无 status/completed_at 等原生字段，仅 output + stop_reason + usage）；标准 Responses 多轮格式（顶层 function_call）回传报上游 chat 错误 `messages[1]: missing field id`，改用 chat 风格 `assistant.tool_calls` 历史才能继续；错误信息明确暴露 `Error from provider (Console Go)`。GO 的 `/chat/completions` 在 thinking mode 下第二轮必须回传 `reasoning_content`，否则 400。
+
 ## 直连 Gemini（Google 官方 API，区别于 oc 中转的 Zen Gemini）
 
 - 定位：Gemini 只负责音频多模态与对话生成，不参与 Codex agent 主力（主力仍为 oc deepseek-v4-flash）。
