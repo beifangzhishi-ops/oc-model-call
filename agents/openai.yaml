@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenCode 模型调用"
+  short_description: "指导调用 OpenCode（oc）GO/Zen 文本与多模态模型"
+  default_prompt: "请调用 oc 模型完成以下任务：<任务说明>"
